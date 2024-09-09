@@ -1,15 +1,16 @@
 version: 2
 
 builds:
-  binary: runlike
-  env:
-    - CGO_ENABLED=0
-  goos:
-    - linux
-    - windows
-  goarch:
-    - amd64
-    - arm64
+  -
+    binary: runlike
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
 
 dockers:
   - image_templates:
