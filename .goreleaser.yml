@@ -2,6 +2,7 @@ version: 2
 
 builds:
   -
+    project_name: runlike-go
     binary: runlike
     env:
       - CGO_ENABLED=0
@@ -12,15 +13,40 @@ builds:
       - amd64
       - arm64
 
+release:
+  github:
+  name_template: "{{ .Tag }}"
+
 dockers:
-  - image_templates:
-      #- "turtletowerz/runlike-go:{{ .Tag }}"
-      - "ghcr.io/turtletowerz/runlike-go:{{ .Tag }}"
+  - image_templates: ["ghcr.io/turtletowerz/{{ .ProjectName }}:{{ .Tag }}-amd64"]
+    use: buildx
     build_flag_templates:
       - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.name={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source={{ .GitURL }}"
       - "--platform=linux/amd64"
+
+  - image_templates: ["ghcr.io/turtletowerz/{{ .ProjectName }}:{{ .Tag }}-arm64v8"]
+    goarch: arm64
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.name={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source={{ .GitURL }}"
+      - "--platform=linux/arm64/v8"
+
+docker_manifests:
+  - name_template: ghcr.io/turtletowerz/{{ .ProjectName }}:{{ .Tag }}
+    image_templates:
+      - ghcr.io/turtletowerz/{{ .ProjectName }}:{{ .Tag }}-amd64
+      - ghcr.io/turtletowerz/{{ .ProjectName }}:{{ .Tag }}-arm64v8
+  - name_template: "ghcr.io/turtletowerz/{{ .ProjectName }}:latest"
+    image_templates:
+      - ghcr.io/turtletowerz/{{ .ProjectName }}:{{ .Tag }}-amd64
+      - ghcr.io/turtletowerz/{{ .ProjectName }}:{{ .Tag }}-arm64v8

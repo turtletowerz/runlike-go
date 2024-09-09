@@ -3,16 +3,16 @@ name: build-release
 on: 
   push:
     tags:
-      - 'v*.*.*'
-
-permissions:
-  contents: write
-  packages: write
+      - "v*.*.*"
 
 jobs:
   build:
     name: Build Project
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
 
     steps:
       - name: Checkout Repo
@@ -23,7 +23,13 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21.x'
+          go-version-file: "go.mod"
+
+      - uses: docker/login-action@v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # TODO: Implement binary signing
       - name: Run GoReleaser
