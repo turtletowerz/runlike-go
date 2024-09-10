@@ -1,8 +1,9 @@
 version: 2
 
+project_name: runlike-go
+
 builds:
   -
-    project_name: runlike-go
     binary: runlike
     env:
       - CGO_ENABLED=0
