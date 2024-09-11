@@ -50,13 +50,9 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		optFunc[*labels]{&labels{ct.Config.Labels, imgdata.Config.Labels}, handleLabels},
 		optFunc[*capabilities]{&capabilities{ct.HostConfig.CapAdd, ct.HostConfig.CapDrop}, handleCapabilities},
 		opt[bool]{ct.HostConfig.ReadonlyRootfs, false, "--read-only"},
-
-		// Lesser used options
-		optFunc[[]container.DeviceMapping]{ct.HostConfig.Devices, handleDevices},
-		optFunc[[]string]{ct.HostConfig.Links, handleLinks},
-		opt[string]{ct.HostConfig.Runtime, "runc", "--runtime="},
-		opt[container.PidMode]{ct.HostConfig.PidMode, "", "--pid "},
-		optPtr[int64]{ct.HostConfig.PidsLimit, -1, "--pids-limit="},
+		optSlice[string]{ct.HostConfig.SecurityOpt, nil, "--security-opt="},
+		optMap{ct.HostConfig.StorageOpt, "--storage-opt "},
+		optMap{ct.HostConfig.Sysctls, "--sysctl "},
 
 		// Networking stuff
 		// TODO: Put hostname, MAC address and other network settings behind an optional network flag?
@@ -70,6 +66,11 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		optSlice[string]{ct.HostConfig.DNSSearch, nil, "--dns-search="},
 		opt[string]{ct.Config.Domainname, "", "--domainname="},
 
+		opt[bool]{ct.Config.AttachStdin, false, "--attach stdin"},
+		opt[bool]{ct.Config.AttachStdout, false, "-attach stdout"},
+		opt[bool]{ct.Config.AttachStderr, false, "-attach stderr"},
+		opt[string]{ct.HostConfig.ContainerIDFile, "", "--cidfile "},
+
 		optFunc[*container.HealthConfig]{ct.Config.Healthcheck, handleHealthcheck},
 		opt[time.Duration]{ct.Config.Healthcheck.Interval, 0, "--health-interval="},
 		opt[int]{ct.Config.Healthcheck.Retries, 0, "--health-retries="},
@@ -77,12 +78,7 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		opt[time.Duration]{ct.Config.Healthcheck.StartInterval, 0, "--health-start-interval="},
 		opt[time.Duration]{ct.Config.Healthcheck.StartPeriod, 0, "--health-start-period="},
 
-		//////////////////////////////////////////////////////////////////////////
-		// Less common options that can go at the end if needed
-		opt[bool]{ct.Config.AttachStdin, false, "--attach stdin"},
-		opt[bool]{ct.Config.AttachStdout, false, "-attach stdout"},
-		opt[bool]{ct.Config.AttachStderr, false, "-attach stderr"},
-		opt[string]{ct.HostConfig.ContainerIDFile, "", "--cidfile "},
+		// Less common options that can go at the end
 
 		// TODO: Windows only?
 		// opt[int]{ct.HostConfig.CPUCount, 0, "--cpu-count="},
@@ -111,13 +107,19 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		// TODO: Seems to be no way to find the default for this
 		//opt[opts.MemBytes]{opts.MemBytes(ct.HostConfig.ShmSize), 0, "--shm-size="},
 
+		optFunc[[]string]{ct.HostConfig.Links, handleLinks},
+
+		optFunc[[]container.DeviceMapping]{ct.HostConfig.Devices, handleDevices},
 		optSlice[string]{ct.HostConfig.DeviceCgroupRules, nil, "--device-cgroup-rule="},
 		opt[string]{ct.HostConfig.CgroupParent, "", "--cgroup-parent="},
 		//opt[container.CgroupnsMode]{ct.HostConfig.CgroupnsMode, "", "--cgroupns="},
 		opt[container.UsernsMode]{ct.HostConfig.UsernsMode, "", "--userns="},
 		opt[container.UTSMode]{ct.HostConfig.UTSMode, "", "--uts="},
-		optSlice[string]{ct.HostConfig.GroupAdd, nil, "--group-add "},
 
+		opt[string]{ct.HostConfig.Runtime, "runc", "--runtime="},
+		opt[container.PidMode]{ct.HostConfig.PidMode, "", "--pid "},
+		optPtr[int64]{ct.HostConfig.PidsLimit, -1, "--pids-limit="},
+		optSlice[string]{ct.HostConfig.GroupAdd, nil, "--group-add "},
 		optSlice[*container.Ulimit]{ct.HostConfig.Ulimits, nil, "--ulimit "},
 
 		opt[uint16]{ct.HostConfig.BlkioWeight, 0, "--blkio-weight="},
@@ -130,17 +132,11 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		opt[string]{ct.Config.StopSignal, "", "--stop-signal="},
 		optPtr[int]{ct.Config.StopTimeout, -1, "--stop-timeout="},
 
-		optSlice[string]{ct.HostConfig.SecurityOpt, nil, "--security-opt="},
-		optMap{ct.HostConfig.StorageOpt, "--storage-opt "},
-		optMap{ct.HostConfig.Sysctls, "--sysctl "},
-
 		optFunc[container.Isolation]{ct.HostConfig.Isolation, handleIsolation},
 
 		//opt[container.IpcMode]{ct.HostConfig.IpcMode, "", "--ipc="},
 
 		optMap{ct.HostConfig.Annotations, "--annotation "},
-
-		//////////////////////////////////////////////////////////////////////////
 	}
 
 	for _, v := range options {
