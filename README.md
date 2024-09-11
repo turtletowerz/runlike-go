@@ -22,5 +22,6 @@ done in a separate Github Action.
 - `--ip`
 - `--ip6`
 - `--network-alias`
+- `--cgroupns` and `--ipc` are currently disabled, as they have have one of two options set a default depending on the Docker daemon version.
 - `--link-local-ip`: Deprecated and ignored by Docker so there's no reason to support.
 - `--env-file` and `--label-file` don't exist in `docker inspect` settings because they are merged with `--env` and `--label`

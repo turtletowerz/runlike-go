@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"maps"
 	"os"
-	"slices"
 	"strings"
 	"time"
 
@@ -30,7 +28,7 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 	// TODO: --platform, --disable-content-trust (untrusted), --pull, --quiet, --detach, --sig-proxy, and --detach-keys are not stored in the container config so we cannot inspect them, how should this be solved?
 
 	namesplit := strings.Split(ct.Name, "/")
-	flags := []string{"docker", "run", "--name=" + namesplit[len(namesplit)-1]}
+	flags := []string{"docker run", "--name=" + namesplit[len(namesplit)-1]}
 
 	enabledCaps := caps.DefaultCapabilities()
 
@@ -54,7 +52,7 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 
 		// Volumes
 		optSlice[string]{ct.HostConfig.Binds, nil, "--volume="},
-		optSlice[string]{slices.Collect(maps.Keys(ct.Config.Volumes)), slices.Collect(maps.Keys(imgdata.Config.Volumes)), "--volume="},
+		// optSlice[string]{slices.Collect(maps.Keys(ct.Config.Volumes)), slices.Collect(maps.Keys(imgdata.Config.Volumes)), "--volume="},
 		optSlice[string]{ct.HostConfig.VolumesFrom, nil, "--volumes-from="},
 		opt[string]{ct.HostConfig.VolumeDriver, "", "--volume-driver="},
 
@@ -108,18 +106,19 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 
 		opt[opts.MemBytes]{opts.MemBytes(ct.HostConfig.Memory), 0, "--memory="},
 		opt[opts.MemBytes]{opts.MemBytes(ct.HostConfig.MemoryReservation), 0, "--memory-reservation="},
-		opt[opts.MemSwapBytes]{opts.MemSwapBytes(ct.HostConfig.MemorySwap), -1, "--memory-swap="},
+		opt[opts.MemSwapBytes]{opts.MemSwapBytes(ct.HostConfig.MemorySwap), 0, "--memory-swap="},
 		optPtr[int64]{ct.HostConfig.MemorySwappiness, -1, "--memory-swappiness="},
 		opt[opts.MemBytes]{opts.MemBytes(ct.HostConfig.KernelMemory), 0, "--kernel-memory="},
 
 		optPtr[bool]{ct.HostConfig.OomKillDisable, false, "--oom-kill-disable"},
 		opt[int]{ct.HostConfig.OomScoreAdj, 0, "--oom-score-adj="},
 
-		opt[opts.MemBytes]{opts.MemBytes(ct.HostConfig.ShmSize), 0, "--shm-size="},
+		// TODO: Seems to be no way to find the default for this
+		//opt[opts.MemBytes]{opts.MemBytes(ct.HostConfig.ShmSize), 0, "--shm-size="},
 
 		optSlice[string]{ct.HostConfig.DeviceCgroupRules, nil, "--device-cgroup-rule="},
 		opt[string]{ct.HostConfig.CgroupParent, "", "--cgroup-parent="},
-		opt[container.CgroupnsMode]{ct.HostConfig.CgroupnsMode, "", "--cgroupns="},
+		//opt[container.CgroupnsMode]{ct.HostConfig.CgroupnsMode, "", "--cgroupns="},
 		opt[container.UsernsMode]{ct.HostConfig.UsernsMode, "", "--userns="},
 		opt[container.UTSMode]{ct.HostConfig.UTSMode, "", "--uts="},
 		optSlice[string]{ct.HostConfig.GroupAdd, nil, "--group-add "},
@@ -142,20 +141,23 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 
 		optFunc[container.Isolation]{ct.HostConfig.Isolation, handleIsolation},
 
-		opt[container.IpcMode]{ct.HostConfig.IpcMode, "", "--ipc="},
+		//opt[container.IpcMode]{ct.HostConfig.IpcMode, "", "--ipc="},
 
 		optMap{ct.HostConfig.Annotations, "--annotation "},
 
 		//////////////////////////////////////////////////////////////////////////
-
-		opt[string]{ct.Config.Image, "", ""},
-		opt[string]{strings.Join(ct.Config.Cmd, " "), "", ""},
 	}
 
 	for _, v := range options {
 		if vals := v.Values(); v != nil {
 			flags = append(flags, vals...)
 		}
+	}
+
+	flags = append(flags, ct.Config.Image)
+
+	if cmd := ct.Config.Cmd; cmd != nil {
+		flags = append(flags, strings.Join(cmd, " "))
 	}
 
 	return flags, nil
@@ -209,7 +211,7 @@ func _main(ctx *cli.Context) error {
 
 	sep := " "
 	if ctx.Bool("pretty") {
-		sep = "\\\n\t"
+		sep = " \\\n\t"
 	}
 
 	fmt.Println(strings.Join(flags, sep))

@@ -65,7 +65,7 @@ func (o optSlice[T]) Values() (ret []string) {
 		for _, val := range o.v {
 			// We only want to add capabilities to the disable list if we know they are enabled by default normally
 			contains := slices.Contains(o.def, val)
-			if contains || (o.name == "--cap-drop=" && !contains) { // TODO: This is dumb, don't hardcode
+			if !contains || (o.name == "--cap-drop=" && contains) { // TODO: This is dumb, don't hardcode
 				ret = append(ret, o.name+strings.ReplaceAll(fmt.Sprintf("%v", val), "\"", "\\\"")) // TODO
 			}
 		}
@@ -168,9 +168,9 @@ func handleHealthcheck(health *container.HealthConfig) (ret []string) {
 			ret = append(ret, "--no-healthcheck")
 			return
 		}
-		ret = append(ret, "--health-cmd=\""+strings.Join(health.Test[1:], " ")+"\"") // TODO: This is probably not right
+		ret = append(ret, "--health-cmd="+strconv.Quote(strings.Join(health.Test[1:], " "))) // TODO: This is probably not right
 	}
-	return nil
+	return
 }
 
 func handlePorts(ctdata *types.ContainerJSON) (ret []string) {
@@ -179,12 +179,8 @@ func handlePorts(ctdata *types.ContainerJSON) (ret []string) {
 		return
 	}
 
-	ports := ctdata.NetworkSettings.Ports
-	// for k, v := range ctdata.HostConfig.PortBindings {
-	// 	ports[k] = v
-	// }
+	ports := ctdata.HostConfig.PortBindings
 
-	// FIXME: Currently no way to determine if a port was given with --expose because Docker assigns in a random port
 	for ctport, bindings := range ports {
 		protocol := ""
 		if ctport.Proto() == "udp" { // TODO: "sctp" is listed as an option, should that be included?
@@ -192,17 +188,20 @@ func handlePorts(ctdata *types.ContainerJSON) (ret []string) {
 		}
 
 		for _, b := range bindings {
-			host_ip := ""
+			host := ""
 			if !(b.HostIP == "0.0.0.0" || b.HostIP == "" || b.HostIP == "::") {
-				host_ip = b.HostIP + ":"
+				host = b.HostIP + ":"
 			}
 
-			host_port := ""
-			if !(b.HostPort == "0" || b.HostPort == "") {
-				host_port = b.HostPort + ":"
+			// If no host port mapping is defined then we know to expose it
+			if b.HostPort == "" {
+				ret = append(ret, "--expose "+ctport.Port())
+				break
+			} else if b.HostPort != "0" {
+				host += b.HostPort + ":"
 			}
 
-			ret = append(ret, "-p "+host_ip+host_port+ctport.Port()+protocol)
+			ret = append(ret, "-p "+host+ctport.Port()+protocol)
 		}
 	}
 
