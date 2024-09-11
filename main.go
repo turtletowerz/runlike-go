@@ -154,15 +154,6 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 	return flags, nil
 }
 
-func parseFromName(cli *client.Client, name string) ([]string, error) {
-	ct, err := cli.ContainerInspect(context.Background(), name)
-	if err != nil {
-		return nil, err
-	}
-
-	return parseFromJSON(cli, &ct)
-}
-
 func _main(ctx *cli.Context) error {
 	if ctx.NArg() == 0 && !ctx.Bool("stdin") {
 		return errors.New("no arguemnts, provide [container] or --stdin")
@@ -188,7 +179,13 @@ func _main(ctx *cli.Context) error {
 
 		flags, err = parseFromJSON(ctcli, &data[0])
 	} else {
-		flags, err = parseFromName(ctcli, ctx.Args().First())
+		name := ctx.Args().First()
+		ct, err := ctcli.ContainerInspect(context.Background(), name)
+		if err != nil {
+			return errors.Wrapf(err, "getting container with name %q", name)
+		}
+
+		flags, err = parseFromJSON(ctcli, &ct)
 	}
 
 	if err != nil {
