@@ -14,7 +14,6 @@ import (
 	"github.com/docker/docker/api/types/blkiodev"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/oci/caps"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
@@ -30,31 +29,27 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 	namesplit := strings.Split(ct.Name, "/")
 	flags := []string{"docker run", "--name=" + namesplit[len(namesplit)-1]}
 
-	enabledCaps := caps.DefaultCapabilities()
-
 	options := []option{
 		opt[bool]{ct.Config.OpenStdin, false, "-i"},
 		opt[bool]{ct.Config.Tty, false, "-t"},
 		opt[bool]{ct.HostConfig.AutoRemove, false, "--rm"},
 		opt[bool]{ct.HostConfig.Privileged, false, "--privileged"},
 		opt[string]{ct.Config.User, "", "--user="},
-		optSlice[string]{ct.Config.Env, imgdata.Config.Env, "--env="},
 		optFunc[container.RestartPolicy]{ct.HostConfig.RestartPolicy, handleRestart},
+		optSlice[string]{ct.Config.Env, imgdata.Config.Env, "--env="},
+
+		// Volumes
+		optSlice[string]{ct.HostConfig.Binds, nil, "-v "},
+		optSlice[string]{ct.HostConfig.VolumesFrom, nil, "--volumes-from="},
+		opt[string]{ct.HostConfig.VolumeDriver, "", "--volume-driver="},
 
 		// Misc popular options
 		opt[string]{ct.Config.WorkingDir, imgdata.Config.WorkingDir, "--workdir="},
 		opt[string]{ct.HostConfig.LogConfig.Type, "json-file", "--log-driver="},
 		optMap{ct.HostConfig.LogConfig.Config, "--log-opt "},
 		optFunc[*labels]{&labels{ct.Config.Labels, imgdata.Config.Labels}, handleLabels},
-		optSlice[string]{ct.HostConfig.CapAdd, enabledCaps, "--cap-add="},
-		optSlice[string]{ct.HostConfig.CapDrop, enabledCaps, "--cap-drop="},
+		optFunc[*capabilities]{&capabilities{ct.HostConfig.CapAdd, ct.HostConfig.CapDrop}, handleCapabilities},
 		opt[bool]{ct.HostConfig.ReadonlyRootfs, false, "--read-only"},
-
-		// Volumes
-		optSlice[string]{ct.HostConfig.Binds, nil, "--volume="},
-		// optSlice[string]{slices.Collect(maps.Keys(ct.Config.Volumes)), slices.Collect(maps.Keys(imgdata.Config.Volumes)), "--volume="},
-		optSlice[string]{ct.HostConfig.VolumesFrom, nil, "--volumes-from="},
-		opt[string]{ct.HostConfig.VolumeDriver, "", "--volume-driver="},
 
 		// Lesser used options
 		optFunc[[]container.DeviceMapping]{ct.HostConfig.Devices, handleDevices},

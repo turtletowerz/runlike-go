@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/oci/caps"
 )
 
 type option interface {
@@ -63,9 +64,7 @@ func (o optSlice[T]) Values() (ret []string) {
 
 	if o.v != nil {
 		for _, val := range o.v {
-			// We only want to add capabilities to the disable list if we know they are enabled by default normally
-			contains := slices.Contains(o.def, val)
-			if !contains || (o.name == "--cap-drop=" && contains) { // TODO: This is dumb, don't hardcode
+			if !slices.Contains(o.def, val) {
 				ret = append(ret, o.name+strings.ReplaceAll(fmt.Sprintf("%v", val), "\"", "\\\"")) // TODO
 			}
 		}
@@ -94,6 +93,28 @@ type optFunc[T any] struct {
 
 func (o optFunc[T]) Values() []string {
 	return o.f(o.v)
+}
+
+type capabilities struct {
+	add  []string
+	drop []string
+}
+
+func handleCapabilities(cap *capabilities) (ret []string) {
+	defaults := caps.DefaultCapabilities()
+
+	for _, c := range cap.add {
+		if !slices.Contains(defaults, "CAP_"+c) {
+			ret = append(ret, "--cap-add=CAP_"+c)
+		}
+	}
+
+	for _, c := range cap.drop {
+		if slices.Contains(defaults, "CAP_"+c) {
+			ret = append(ret, "--cap-drop=CAP_"+c)
+		}
+	}
+	return
 }
 
 func handleRestart(r container.RestartPolicy) []string {
