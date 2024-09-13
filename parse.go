@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -184,6 +185,10 @@ func handleLabels(l *labels) (ret []string) {
 }
 
 func handleHealthcheck(health *container.HealthConfig) (ret []string) {
+	if health == nil {
+		return
+	}
+
 	if len(health.Test) > 0 {
 		if health.Test[0] == "NONE" {
 			ret = append(ret, "--no-healthcheck")
@@ -191,6 +196,21 @@ func handleHealthcheck(health *container.HealthConfig) (ret []string) {
 		}
 		ret = append(ret, "--health-cmd="+strconv.Quote(strings.Join(health.Test[1:], " "))) // TODO: This is probably not right
 	}
+
+	var opts = map[string]time.Duration{
+		"--health-interval=":       health.Interval,
+		"--health-retries=":        time.Duration(health.Retries),
+		"--health-timeout=":        health.Timeout,
+		"--health-start-interval=": health.StartInterval,
+		"--health-start-period=":   health.StartPeriod,
+	}
+
+	for name, val := range opts {
+		if val != 0 {
+			ret = append(ret, name+val.String())
+		}
+	}
+
 	return
 }
 
@@ -201,6 +221,9 @@ func handlePorts(ctdata *types.ContainerJSON) (ret []string) {
 	}
 
 	ports := ctdata.HostConfig.PortBindings
+	if ports == nil {
+		return
+	}
 
 	for ctport, bindings := range ports {
 		protocol := ""

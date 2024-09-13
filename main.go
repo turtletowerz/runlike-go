@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
@@ -72,11 +71,6 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		opt[string]{ct.HostConfig.ContainerIDFile, "", "--cidfile "},
 
 		optFunc[*container.HealthConfig]{ct.Config.Healthcheck, handleHealthcheck},
-		opt[time.Duration]{ct.Config.Healthcheck.Interval, 0, "--health-interval="},
-		opt[int]{ct.Config.Healthcheck.Retries, 0, "--health-retries="},
-		opt[time.Duration]{ct.Config.Healthcheck.Timeout, 0, "--health-timeout="},
-		opt[time.Duration]{ct.Config.Healthcheck.StartInterval, 0, "--health-start-interval="},
-		opt[time.Duration]{ct.Config.Healthcheck.StartPeriod, 0, "--health-start-period="},
 
 		// Less common options that can go at the end
 
