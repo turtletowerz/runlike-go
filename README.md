@@ -14,11 +14,8 @@ done in a separate Github Action.
 
 
 ### Current Unsupported Flags
-- `--entrypoint`
 - `--gpus`
-- `--init`
 - `--mount`
-- `--tmpfs`
 - `--ip`
 - `--ip6`
 - `--network-alias`

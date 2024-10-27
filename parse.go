@@ -96,21 +96,22 @@ func (o optFunc[T]) Values() []string {
 	return o.f(o.v)
 }
 
-type capabilities struct {
-	add  []string
-	drop []string
+type twoOf[T any] struct {
+	first  T
+	second T
+	name   string
 }
 
-func handleCapabilities(cap *capabilities) (ret []string) {
+func handleCapabilities(cap twoOf[[]string]) (ret []string) {
 	defaults := caps.DefaultCapabilities()
 
-	for _, c := range cap.add {
+	for _, c := range cap.first {
 		if !slices.Contains(defaults, "CAP_"+c) {
 			ret = append(ret, "--cap-add=CAP_"+c)
 		}
 	}
 
-	for _, c := range cap.drop {
+	for _, c := range cap.second {
 		if slices.Contains(defaults, "CAP_"+c) {
 			ret = append(ret, "--cap-drop=CAP_"+c)
 		}
@@ -170,15 +171,10 @@ func handleDevices(devices []container.DeviceMapping) (ret []string) {
 	return
 }
 
-type labels struct {
-	ctlabels  map[string]string
-	imglabels map[string]string
-}
-
-func handleLabels(l *labels) (ret []string) {
-	for k, v := range l.ctlabels {
-		if iv, ok := l.imglabels[k]; !ok || v != iv {
-			ret = append(ret, "--label='"+k+"="+v+"'")
+func handleLabels(l twoOf[map[string]string]) (ret []string) {
+	for k, v := range l.first {
+		if iv, ok := l.second[k]; !ok || v != iv {
+			ret = append(ret, l.name+"'"+k+"="+v+"'")
 		}
 	}
 	return
@@ -250,4 +246,25 @@ func handlePorts(ctdata *types.ContainerJSON) (ret []string) {
 	}
 
 	return
+}
+
+// https://github.com/moby/moby/blob/27.x/integration/internal/container/ops.go#L138
+func handleTmpFS(tmpfs map[string]string) (ret []string) {
+	for k, v := range tmpfs {
+		ret = append(ret, "--tmpfs="+k+":"+v)
+	}
+	return
+}
+
+func handleCommand(cmds twoOf[[]string]) []string {
+	if len(cmds.first) == 0 {
+		return nil
+	}
+
+	if slices.Compare(cmds.first, cmds.second) == 0 {
+		return nil
+	}
+
+	// TODO: Escape quotes
+	return []string{cmds.name + strconv.Quote(strings.Join(cmds.first, " "))}
 }

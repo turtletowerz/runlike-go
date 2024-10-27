@@ -41,17 +41,21 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		optSlice[string]{ct.HostConfig.Binds, nil, "-v "},
 		optSlice[string]{ct.HostConfig.VolumesFrom, nil, "--volumes-from="},
 		opt[string]{ct.HostConfig.VolumeDriver, "", "--volume-driver="},
+		optFunc[map[string]string]{ct.HostConfig.Tmpfs, handleTmpFS},
 
 		// Misc popular options
 		opt[string]{ct.Config.WorkingDir, imgdata.Config.WorkingDir, "--workdir="},
 		opt[string]{ct.HostConfig.LogConfig.Type, "json-file", "--log-driver="},
 		optMap{ct.HostConfig.LogConfig.Config, "--log-opt "},
-		optFunc[*labels]{&labels{ct.Config.Labels, imgdata.Config.Labels}, handleLabels},
-		optFunc[*capabilities]{&capabilities{ct.HostConfig.CapAdd, ct.HostConfig.CapDrop}, handleCapabilities},
+		optFunc[twoOf[map[string]string]]{twoOf[map[string]string]{ct.Config.Labels, imgdata.Config.Labels, "--label="}, handleLabels},
+		optFunc[twoOf[[]string]]{twoOf[[]string]{ct.HostConfig.CapAdd, ct.HostConfig.CapDrop, ""}, handleCapabilities},
 		opt[bool]{ct.HostConfig.ReadonlyRootfs, false, "--read-only"},
 		optSlice[string]{ct.HostConfig.SecurityOpt, nil, "--security-opt="},
 		optMap{ct.HostConfig.StorageOpt, "--storage-opt "},
 		optMap{ct.HostConfig.Sysctls, "--sysctl "},
+
+		// Commands
+		optFunc[twoOf[[]string]]{twoOf[[]string]{ct.Config.Entrypoint, imgdata.Config.Entrypoint, "--entrypoint="}, handleCommand},
 
 		// Networking stuff
 		// TODO: Put hostname, MAC address and other network settings behind an optional network flag?
@@ -115,6 +119,7 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		optPtr[int64]{ct.HostConfig.PidsLimit, -1, "--pids-limit="},
 		optSlice[string]{ct.HostConfig.GroupAdd, nil, "--group-add "},
 		optSlice[*container.Ulimit]{ct.HostConfig.Ulimits, nil, "--ulimit "},
+		optPtr[bool]{ct.HostConfig.Init, false, "--init"},
 
 		opt[uint16]{ct.HostConfig.BlkioWeight, 0, "--blkio-weight="},
 		optSlice[*blkiodev.WeightDevice]{ct.HostConfig.BlkioWeightDevice, nil, "--blkio-weight-device="},
