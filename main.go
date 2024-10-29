@@ -23,7 +23,7 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		return nil, errors.Wrap(err, "getting container image")
 	}
 
-	// TODO: --platform, --disable-content-trust (untrusted), --pull, --quiet, --detach, --sig-proxy, and --detach-keys are not stored in the container config so we cannot inspect them, how should this be solved?
+	// TODO: --sig-proxy, and  are not stored in the container config so we cannot inspect them, how should this be solved?
 
 	namesplit := strings.Split(ct.Name, "/")
 	flags := []string{"docker run", "--name=" + namesplit[len(namesplit)-1]}
@@ -60,9 +60,9 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		// Networking stuff
 		// TODO: Put hostname, MAC address and other network settings behind an optional network flag?
 		optFunc[*types.ContainerJSON]{ct, handlePorts},
-		//opt[string]{ct.Config.Hostname, "", "--hostname="}
+		opt[string]{ct.Config.Hostname, "", "--hostname="},
 		//opt[string]{ct.NetworkSettings.MacAddress, "", "--mac-address="},
-		optFunc[container.NetworkMode]{ct.HostConfig.NetworkMode, handleNetworkMode},
+		//optFunc[container.NetworkMode]{ct.HostConfig.NetworkMode, handleNetworkMode},
 		optSlice[string]{ct.HostConfig.ExtraHosts, nil, "--add-host "},
 		optSlice[string]{ct.HostConfig.DNS, nil, "--dns="},
 		optSlice[string]{ct.HostConfig.DNSOptions, nil, "--dns-option="},
@@ -70,8 +70,8 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		opt[string]{ct.Config.Domainname, "", "--domainname="},
 
 		opt[bool]{ct.Config.AttachStdin, false, "--attach stdin"},
-		opt[bool]{ct.Config.AttachStdout, false, "-attach stdout"},
-		opt[bool]{ct.Config.AttachStderr, false, "-attach stderr"},
+		opt[bool]{ct.Config.AttachStdout, false, "--attach stdout"},
+		opt[bool]{ct.Config.AttachStderr, false, "--attach stderr"},
 		opt[string]{ct.HostConfig.ContainerIDFile, "", "--cidfile "},
 
 		optFunc[*container.HealthConfig]{ct.Config.Healthcheck, handleHealthcheck},
@@ -123,10 +123,10 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 
 		opt[uint16]{ct.HostConfig.BlkioWeight, 0, "--blkio-weight="},
 		optSlice[*blkiodev.WeightDevice]{ct.HostConfig.BlkioWeightDevice, nil, "--blkio-weight-device="},
-		optSlice[*blkiodev.ThrottleDevice]{ct.HostConfig.BlkioDeviceReadBps, nil, "--blkio-read-bps="},
-		optSlice[*blkiodev.ThrottleDevice]{ct.HostConfig.BlkioDeviceReadIOps, nil, "--blkio-read-iops="},
-		optSlice[*blkiodev.ThrottleDevice]{ct.HostConfig.BlkioDeviceWriteBps, nil, "--blkio-write-bps="},
-		optSlice[*blkiodev.ThrottleDevice]{ct.HostConfig.BlkioDeviceWriteIOps, nil, "--blkio-write-iops="},
+		optSlice[*blkiodev.ThrottleDevice]{ct.HostConfig.BlkioDeviceReadBps, nil, "--device-read-bps="},
+		optSlice[*blkiodev.ThrottleDevice]{ct.HostConfig.BlkioDeviceReadIOps, nil, "--device-read-iops="},
+		optSlice[*blkiodev.ThrottleDevice]{ct.HostConfig.BlkioDeviceWriteBps, nil, "--device-write-bps="},
+		optSlice[*blkiodev.ThrottleDevice]{ct.HostConfig.BlkioDeviceWriteIOps, nil, "--device-write-iops="},
 
 		opt[string]{ct.Config.StopSignal, "", "--stop-signal="},
 		optPtr[int]{ct.Config.StopTimeout, -1, "--stop-timeout="},
