@@ -17,7 +17,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error) {
+func parseFromJSON(cli *client.Client, ct *types.ContainerJSON, labels bool) ([]string, error) {
 	imgdata, _, err := cli.ImageInspectWithRaw(context.Background(), ct.Image)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting container image")
@@ -47,7 +47,6 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		opt[string]{ct.Config.WorkingDir, imgdata.Config.WorkingDir, "--workdir="},
 		opt[string]{ct.HostConfig.LogConfig.Type, "json-file", "--log-driver="},
 		optMap{ct.HostConfig.LogConfig.Config, "--log-opt "},
-		optFunc[twoOf[map[string]string]]{twoOf[map[string]string]{ct.Config.Labels, imgdata.Config.Labels, "--label="}, handleLabels},
 		optFunc[twoOf[[]string]]{twoOf[[]string]{ct.HostConfig.CapAdd, ct.HostConfig.CapDrop, ""}, handleCapabilities},
 		opt[bool]{ct.HostConfig.ReadonlyRootfs, false, "--read-only"},
 		optSlice[string]{ct.HostConfig.SecurityOpt, nil, "--security-opt="},
@@ -138,6 +137,10 @@ func parseFromJSON(cli *client.Client, ct *types.ContainerJSON) ([]string, error
 		optMap{ct.HostConfig.Annotations, "--annotation "},
 	}
 
+	if labels {
+		options = append(options, optFunc[twoOf[map[string]string]]{twoOf[map[string]string]{ct.Config.Labels, imgdata.Config.Labels, "--label="}, handleLabels})
+	}
+
 	for _, v := range options {
 		if vals := v.Values(); v != nil {
 			flags = append(flags, vals...)
@@ -176,7 +179,7 @@ func _main(ctx *cli.Context) error {
 			return errors.New("only 1 container can be inspected at a time")
 		}
 
-		flags, err = parseFromJSON(ctcli, &data[0])
+		flags, err = parseFromJSON(ctcli, &data[0], ctx.Bool("labels"))
 	} else {
 		name := ctx.Args().First()
 		ct, err := ctcli.ContainerInspect(context.Background(), name)
@@ -184,7 +187,7 @@ func _main(ctx *cli.Context) error {
 			return errors.Wrapf(err, "getting container with name %q", name)
 		}
 
-		flags, err = parseFromJSON(ctcli, &ct)
+		flags, err = parseFromJSON(ctcli, &ct, ctx.Bool("labels"))
 	}
 
 	if err != nil {
@@ -230,6 +233,10 @@ func main() {
 				Name:    "stdin",
 				Aliases: []string{"s"},
 				Usage:   "Accept input from STDIN",
+			},
+			&cli.BoolFlag{
+				Name:  "labels",
+				Usage: "Include labels as container information",
 			},
 		},
 	}
